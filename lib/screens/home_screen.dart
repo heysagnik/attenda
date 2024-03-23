@@ -118,12 +118,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (parts.length >= 2) {
       _showAttendeeDetails(parts[0], parts.sublist(1).join(' '));
     } else {
-      _showInvalidQRCodeDialog();
+      _showInvalidQRCodeDialog(context); // Pass context here
     }
   }
 
-  void _showAttendeeDetails(
-      String registrationNo, String name) {
+  void _showAttendeeDetails(String registrationNo, String name) async {
+    final isPresent = await _checkAttendanceInDatabase(registrationNo); // Check attendance status
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -138,16 +139,39 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Space buttons evenly
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context), // Close dialog (Absent)
+                child: const Text('Absent', style: TextStyle(color: Colors.red)), // Set absent button color to red
+              ),
+              TextButton(
+                onPressed: isPresent ? null : () => _markPresent(registrationNo), // Disable if already present
+                child: Text(isPresent ? 'Already Present' : 'Present'),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  void _showInvalidQRCodeDialog() {
+  // Function to check attendance in database (replace with your actual implementation)
+  Future<bool> _checkAttendanceInDatabase(String registrationNo) async {
+    // Implement your logic to query the database for attendance status
+    // This example assumes a placeholder function that always returns false
+    return false;
+  }
+
+  // Function to mark attendee as present (replace with your actual implementation)
+  Future<void> _markPresent(String registrationNo) async {
+    // Implement your logic to update the database with attendance status
+    // (e.g., using Firebase, Cloud Firestore, or your preferred database)
+    print('Marking $registrationNo as present'); // Placeholder for now
+  }
+
+  void _showInvalidQRCodeDialog(BuildContext context) { // Pass context here
     showDialog(
       context: context,
       builder: (context) {
