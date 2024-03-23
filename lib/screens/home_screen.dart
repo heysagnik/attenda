@@ -1,17 +1,15 @@
-// ignore_for_file: avoid_print
-
-import 'package:attendance/screens/scanner_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:attendance/screens/scanner_screen.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-
   String qrResult = "You have not scanned a QR";
 
   Future<String?> _scanQRCode(BuildContext context) async {
@@ -34,7 +32,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         elevation: 2,
@@ -53,7 +50,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontWeight: FontWeight.w900,
                 fontSize: 30)),
         centerTitle: true,
-        actions: [IconButton(onPressed: () {}, icon: const Icon(Icons.logout))],
+        actions: [
+          IconButton(onPressed: () {}, icon: const Icon(Icons.logout))
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -71,7 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     TextSpan(
                       text: 'present',
-                      style: TextStyle(fontSize: 24, color: Colors.lightGreen),
+                      style: TextStyle(
+                          fontSize: 24, color: Colors.lightGreen),
                     ),
                     TextSpan(
                       text: ' ', // Add a space after "present"
@@ -97,7 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.qr_code_scanner_outlined),
                 label: const Text('Scan QR Code'),
                 style: ButtonStyle(
-                  backgroundColor: MaterialStateProperty.all(Colors.lightGreen),
+                  backgroundColor:
+                  MaterialStateProperty.all(Colors.lightGreen),
                   elevation: MaterialStateProperty.all(0),
                   shape: MaterialStateProperty.all<RoundedRectangleBorder>(
                     const RoundedRectangleBorder(
@@ -111,16 +112,19 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
   void _handleScanResult(String qrResult) {
     final parts = qrResult.split(' ');
     if (parts.length >= 2) {
       _showAttendeeDetails(parts[0], parts.sublist(1).join(' '));
     } else {
-      _showInvalidQRCodeDialog();
+      _showInvalidQRCodeDialog(context); // Pass context here
     }
   }
 
-  void _showAttendeeDetails(String registrationNo, String name) {
+  void _showAttendeeDetails(String registrationNo, String name) async {
+    final isPresent = await _checkAttendanceInDatabase(registrationNo); // Check attendance status
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -135,27 +139,72 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Space buttons evenly
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context), // Close dialog (Absent)
+                child: const Text('Absent', style: TextStyle(color: Colors.red)), // Set absent button color to red
+              ),
+              TextButton(
+                onPressed: isPresent ? null : () => _markPresent(registrationNo), // Disable if already present
+                child: Text(isPresent ? 'Already Present' : 'Present'),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  void _showInvalidQRCodeDialog() {
+  // Function to check attendance in database (replace with your actual implementation)
+  Future<bool> _checkAttendanceInDatabase(String registrationNo) async {
+    // Implement your logic to query the database for attendance status
+    // This example assumes a placeholder function that always returns false
+    return false;
+  }
+
+  // Function to mark attendee as present (replace with your actual implementation)
+  Future<void> _markPresent(String registrationNo) async {
+    // Implement your logic to update the database with attendance status
+    // (e.g., using Firebase, Cloud Firestore, or your preferred database)
+    print('Marking $registrationNo as present'); // Placeholder for now
+  }
+
+  void _showInvalidQRCodeDialog(BuildContext context) { // Pass context here
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        content: const Text('Invalid QR code format'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+      builder: (context) {
+        // Set up a flag to prevent dismissing the dialog after it's popped
+        bool isDialogDismissed = false;
+
+        // Create a timer to automatically dismiss the dialog after 5 seconds
+        Timer(const Duration(seconds: 5), () {
+          if (!isDialogDismissed) {
+            // Check if the dialog is still showing before attempting to dismiss
+            Navigator.pop(context);
+          }
+        });
+
+        // Build and return the AlertDialog
+        return PopScope(
+          // Prevent dialog dismissal via the back button
+          child: AlertDialog(
+            backgroundColor: Colors.white,
+            content: const Text('Invalid QR code format'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  // Set the flag to true to indicate dialog dismissal
+                  isDialogDismissed = true;
+                  Navigator.pop(context); // Dismiss the dialog manually
+                },
+                child: const Text('OK'),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

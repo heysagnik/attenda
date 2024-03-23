@@ -138,26 +138,60 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _signIn(String email, String password) async {
     try {
-      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final UserCredential userCredential =
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      Navigator.pushReplacement(
+
+      if (userCredential.user != null) {
+        // Navigate to home screen
+        Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()));
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } else {
+        // Handle null user scenario
+        _showErrorDialog('Login failed. Please try again.');
+      }
     } on FirebaseAuthException catch (e) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          content: Text(e.message ?? 'An error occurred'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+      String errorMessage = '';
+
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No user found with this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Invalid password.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Invalid email address.';
+          break;
+        default:
+          errorMessage = e.message ?? 'An error occurred';
+      }
+
+      _showErrorDialog(errorMessage);
+    } catch (e) {
+      _showErrorDialog('An error occurred');
     }
   }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
 }
