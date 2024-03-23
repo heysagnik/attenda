@@ -1,3 +1,5 @@
+import 'package:attendance/screens/login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:attendance/screens/scanner_screen.dart';
 import 'dart:async';
@@ -11,6 +13,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String qrResult = "You have not scanned a QR";
+
+
 
   Future<String?> _scanQRCode(BuildContext context) async {
     // Navigate to the ScannerPage to initiate scanning
@@ -51,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 30)),
         centerTitle: true,
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.logout))
+          IconButton(onPressed: (){_signout();}, icon: const Icon(Icons.logout))
         ],
       ),
       body: Padding(
@@ -139,19 +143,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Space buttons evenly
-            children: [
-              TextButton(
-                onPressed: () => Navigator.pop(context), // Close dialog (Absent)
-                child: const Text('Absent', style: TextStyle(color: Colors.red)), // Set absent button color to red
-              ),
+
               TextButton(
                 onPressed: isPresent ? null : () => _markPresent(registrationNo), // Disable if already present
                 child: Text(isPresent ? 'Already Present' : 'Present'),
               ),
-            ],
-          ),
         ],
       ),
     );
@@ -207,4 +203,11 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
+
+  void _signout()async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.pushReplacement(
+        context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+  }
 }
+
