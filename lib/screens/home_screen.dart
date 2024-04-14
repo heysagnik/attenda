@@ -1,11 +1,13 @@
+// ignore_for_file: depend_on_referenced_packages
+
 import 'package:attendance/screens/login_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:attendance/screens/scanner_screen.dart';
+import 'package:supabase/supabase.dart';
 import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -14,7 +16,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String qrResult = "You have not scanned a QR";
 
-
+  // Initialize Supabase client
+  final client = SupabaseClient('supabaseUrl', 'supabaseKey');
 
   Future<String?> _scanQRCode(BuildContext context) async {
     // Navigate to the ScannerPage to initiate scanning
@@ -55,7 +58,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 30)),
         centerTitle: true,
         actions: [
-          IconButton(onPressed: (){_signout();}, icon: const Icon(Icons.logout))
+          IconButton(
+              onPressed: () {
+                _signout();
+              },
+              icon: const Icon(Icons.logout))
         ],
       ),
       body: Padding(
@@ -74,8 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     TextSpan(
                       text: 'present',
-                      style: TextStyle(
-                          fontSize: 24, color: Colors.lightGreen),
+                      style: TextStyle(fontSize: 24, color: Colors.lightGreen),
                     ),
                     TextSpan(
                       text: ' ', // Add a space after "present"
@@ -101,8 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.qr_code_scanner_outlined),
                 label: const Text('Scan QR Code'),
                 style: ButtonStyle(
-                  backgroundColor:
-                  MaterialStateProperty.all(Colors.lightGreen),
+                  backgroundColor: MaterialStateProperty.all(Colors.lightGreen),
                   elevation: MaterialStateProperty.all(0),
                   shape: MaterialStateProperty.all<RoundedRectangleBorder>(
                     const RoundedRectangleBorder(
@@ -127,7 +132,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showAttendeeDetails(String registrationNo, String name) async {
-    final isPresent = await _checkAttendanceInDatabase(registrationNo); // Check attendance status
+    final isPresent = await _checkAttendanceInDatabase(
+        registrationNo); // Check attendance status
 
     showDialog(
       context: context,
@@ -143,11 +149,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-
-              TextButton(
-                onPressed: isPresent ? null : () => _markPresent(registrationNo), // Disable if already present
-                child: Text(isPresent ? 'Already Present' : 'Present'),
-              ),
+          TextButton(
+            onPressed: isPresent
+                ? null
+                : () =>
+                    _markPresent(registrationNo), // Disable if already present
+            child: Text(isPresent ? 'Already Present' : 'Present'),
+          ),
         ],
       ),
     );
@@ -167,7 +175,8 @@ class _HomeScreenState extends State<HomeScreen> {
     print('Marking $registrationNo as present'); // Placeholder for now
   }
 
-  void _showInvalidQRCodeDialog(BuildContext context) { // Pass context here
+  void _showInvalidQRCodeDialog(BuildContext context) {
+    // Pass context here
     showDialog(
       context: context,
       builder: (context) {
@@ -204,10 +213,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _signout()async {
-    await FirebaseAuth.instance.signOut();
+  void _signout() async {
+    await client.auth.signOut();
     Navigator.pushReplacement(
         context, MaterialPageRoute(builder: (context) => const LoginScreen()));
   }
 }
-

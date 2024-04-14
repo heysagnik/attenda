@@ -15,14 +15,13 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.6
-  cloud_firestore: ^4.15.9
-  firebase_storage: ^11.6.10
-  firebase_auth: ^4.17.9
+  
   shared_preferences: ^2.2.2
-  firebase_core: ^2.27.1
+  
   qr_code_scanner: ^1.0.1
   provider: ^6.1.2
-  mobile_scanner: ^3.3.5
+  mobile_scanner: ^4.0.1
+  supabase_flutter: ^2.5.0
 
 dev_dependencies:
   flutter_test:

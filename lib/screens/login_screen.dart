@@ -1,11 +1,15 @@
+// ignore_for_file: depend_on_referenced_packages
+
 import 'package:attendance/screens/home_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase/supabase.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _LoginScreenState createState() => _LoginScreenState();
 }
 
@@ -15,6 +19,8 @@ class _LoginScreenState extends State<LoginScreen> {
   // Text editing controllers for email and password
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  final supabase = Supabase.instance.client;
 
   @override
   Widget build(BuildContext context) {
@@ -138,42 +144,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _signIn(String email, String password) async {
     try {
-      final UserCredential userCredential =
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      await supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
-
-      if (userCredential.user != null) {
-        // Navigate to home screen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      } else {
-        // Handle null user scenario
-        _showErrorDialog('Login failed. Please try again.');
-      }
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = '';
-
-      switch (e.code) {
-        case 'user-not-found':
-          errorMessage = 'No user found with this email.';
-          break;
-        case 'wrong-password':
-          errorMessage = 'Invalid password.';
-          break;
-        case 'invalid-email':
-          errorMessage = 'Invalid email address.';
-          break;
-        default:
-          errorMessage = e.message ?? 'An error occurred';
-      }
-
-      _showErrorDialog(errorMessage);
-    } catch (e) {
-      _showErrorDialog('An error occurred');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } on AuthException catch (error) {
+      _showErrorDialog(error.message);
+    } catch (_) {
+      _showErrorDialog('An unknown error occurred. Please try again later.');
     }
   }
 
@@ -191,7 +173,4 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
-
-
 }
