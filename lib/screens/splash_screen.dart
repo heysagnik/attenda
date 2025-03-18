@@ -1,5 +1,3 @@
-import 'package:attendance/main.dart';
-import 'package:attendance/screens/home_screen.dart';
 import 'package:attendance/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -23,18 +21,10 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
-    final session = supabase.auth.currentSession;
-    if (session != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    }
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
   }
 
   @override

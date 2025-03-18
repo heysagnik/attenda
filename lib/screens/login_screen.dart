@@ -2,7 +2,6 @@
 
 import 'package:attendance/screens/home_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase/supabase.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -115,10 +114,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: ElevatedButton(
                         style: ButtonStyle(
                           backgroundColor:
-                              MaterialStateProperty.all(Colors.lightGreen),
-                          elevation: MaterialStateProperty.all(0),
+                              WidgetStateProperty.all(Colors.lightGreen),
+                          elevation: WidgetStateProperty.all(0),
                           shape:
-                              MaterialStateProperty.all<RoundedRectangleBorder>(
+                              WidgetStateProperty.all<RoundedRectangleBorder>(
                             const RoundedRectangleBorder(
                                 borderRadius:
                                     BorderRadius.all(Radius.circular(12.0))),
