@@ -14,19 +14,19 @@ dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.6
   
   shared_preferences: ^2.2.2
   
   
-  provider: ^6.1.2
-  
-  supabase_flutter: ^2.5.0
-  flutter_zxing: ^1.8.2
+ 
+
   mobile_scanner: ^6.0.7
-  slide_to_act: ^2.0.2
   lottie: ^3.3.1
   mongo_dart: ^0.10.4
+  encrypt: ^5.0.3
+  tuple: ^2.0.2
+  crypto: ^3.0.6
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

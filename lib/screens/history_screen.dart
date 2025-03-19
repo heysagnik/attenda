@@ -7,8 +7,7 @@ enum FilterOption { all, today, thisWeek, thisMonth }
 class HistoryScreen extends StatefulWidget {
   final MongoDBService mongoDBService;
 
-  const HistoryScreen({Key? key, required this.mongoDBService})
-      : super(key: key);
+  const HistoryScreen({super.key, required this.mongoDBService});
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();

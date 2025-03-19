@@ -51,8 +51,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<String?> _scanQRCode(BuildContext context) async {
-    return Navigator.of(context).push<String>(
+  Future<Map<String, dynamic>?> _scanQRCode(BuildContext context) async {
+    return Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(builder: (context) => const QrScannerScreen()),
     );
   }
@@ -65,48 +65,42 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _handleScanResult(String qrResult) {
-    final parts = qrResult.split('_');
-    if (parts.length != 2) {
-      _showInvalidQRCodeDialog();
-      return;
-    }
-    _showAttendeeDetails(parts[0], parts[1]);
+  void _handleScanResult(Map<String, dynamic> qrData) {
+    final String registrationNo = qrData['registrationNo'];
+    final String eventName = qrData['eventName'];
+    final String decrypted = qrData['decrypted'];
+    final String encrypted = qrData['encrypted'];
+
+    _showAttendeeDetails(registrationNo, eventName, decrypted, encrypted);
   }
 
-  Future<bool> _markPresent(String registrationNo, String eventName) async {
-    try {
-      return await _mongoDBService.markStudentPresent(
-          registrationNo, eventName);
-    } catch (e) {
-      debugPrint('Error marking student as present: $e');
-      return false;
-    }
-  }
-
-  void _showAttendeeDetails(String registrationNo, String eventName) async {
+  void _showAttendeeDetails(String registrationNo, String eventName,
+      String decryptedData, String encryptedData) async {
     setState(() => _isLoading = true);
-    bool isRegistered = false;
     bool isAlreadyPresent = false;
-    try {
-      isRegistered = await _mongoDBService.isStudentRegistered(registrationNo);
-      if (isRegistered) {
-        isAlreadyPresent =
-            await _mongoDBService.isStudentPresent(registrationNo);
+    // Check if the event name matches the currently selected collection.
+    bool isRegistered = (eventName == _mongoDBService.currentCollection);
+
+    // Only check presence if the student is registered (i.e. event matches collection)
+    if (isRegistered) {
+      try {
+        isAlreadyPresent = await _mongoDBService.isStudentPresentForEvent(
+            registrationNo, eventName);
+      } catch (e) {
+        debugPrint('Error checking student presence: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Working in offline mode. Data will sync when connection is restored.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
-    } catch (e) {
-      debugPrint('Error checking student status: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'Working in offline mode. Data will sync when connection is restored.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
     }
+    setState(() => _isLoading = false);
+
     if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -116,14 +110,17 @@ class _HomeScreenState extends State<HomeScreen> {
         eventName: eventName,
         isAlreadyPresent: isAlreadyPresent,
         isRegistered: isRegistered,
-        onMarkPresent: isRegistered
+        decryptedData: decryptedData,
+        encryptedData: encryptedData,
+        onMarkPresent: (isRegistered && !isAlreadyPresent)
             ? () async {
-                bool success = await _markPresent(registrationNo, eventName);
+                bool success = await _mongoDBService.markStudentPresent(
+                    registrationNo, eventName);
                 Navigator.pop(context);
                 _showSnackMessage(
                   success
                       ? 'Attendance marked successfully!'
-                      : 'Failed to mark attendance. Please try again.',
+                      : 'Already marked present or failed to mark attendance.',
                   success ? Colors.lightGreen : Colors.red,
                   success ? Icons.check_circle : Icons.error,
                 );
@@ -131,16 +128,6 @@ class _HomeScreenState extends State<HomeScreen> {
             : null,
       ),
     );
-  }
-
-  void _showInvalidQRCodeDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => const InvalidQRCodeDialog(),
-    );
-    Timer(const Duration(seconds: 5), () {
-      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
-    });
   }
 
   void _showSnackMessage(String message, Color bgColor, IconData icon) {
@@ -500,6 +487,8 @@ class AttendeeDetailsBottomSheet extends StatelessWidget {
   final bool isAlreadyPresent;
   final bool isRegistered;
   final Future<void> Function()? onMarkPresent;
+  final String decryptedData;
+  final String encryptedData;
 
   const AttendeeDetailsBottomSheet({
     super.key,
@@ -508,6 +497,8 @@ class AttendeeDetailsBottomSheet extends StatelessWidget {
     required this.isAlreadyPresent,
     required this.isRegistered,
     required this.onMarkPresent,
+    required this.decryptedData,
+    required this.encryptedData,
   });
 
   @override
@@ -565,6 +556,76 @@ class AttendeeDetailsBottomSheet extends StatelessWidget {
                 isAlreadyPresent ? Colors.green : Colors.orange,
                 isSmallScreen,
               ),
+
+            // Add encryption information
+            SizedBox(height: isSmallScreen ? 16 : 20),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.lightGreen.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.lightGreen.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.lock_open,
+                          color: Colors.lightGreen.shade700,
+                          size: isSmallScreen ? 16 : 18),
+                      SizedBox(width: 8),
+                      Text(
+                        "Decrypted QR Data",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: isSmallScreen ? 13 : 14,
+                          color: Colors.lightGreen.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    decryptedData,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 13 : 14,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Divider(color: Colors.lightGreen.shade200),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.security,
+                          color: Colors.blue.shade700,
+                          size: isSmallScreen ? 16 : 18),
+                      SizedBox(width: 8),
+                      Text(
+                        "Original Encrypted Data",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: isSmallScreen ? 12 : 13,
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    encryptedData.length > 35
+                        ? '${encryptedData.substring(0, 35)}...'
+                        : encryptedData,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 11 : 12,
+                      fontFamily: 'monospace',
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             SizedBox(height: bottomSheetPadding),
             SizedBox(
               width: double.infinity,

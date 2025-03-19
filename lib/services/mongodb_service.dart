@@ -117,35 +117,58 @@ class MongoDBService {
 
   Future<bool> markStudentPresent(
       String registrationNo, String eventName) async {
-    if (_currentCollection == null) {
-      throw Exception("No collection selected");
-    }
     await initialize();
-    final collection = _db!.collection(_currentCollection!);
+    final collection = _db!.collection(eventName);
     final student =
         await collection.findOne(where.eq('registrationNo', registrationNo));
-    if (student == null) {
-      debugPrint(
-          'Student [$registrationNo] not found. Cannot mark as present.');
+    if (student != null && (student['verified'] as bool? ?? false)) {
+      // Already marked present.
       return false;
     }
     try {
-      await collection.updateOne(
-        where.eq('registrationNo', registrationNo),
-        modify.set('verified', true).set('verifiedAt', DateTime.now()),
+      if (student != null) {
+        // If document exists but not verified, update it.
+        await collection.updateOne(
+            where.eq('registrationNo', registrationNo),
+            modify
+                .set('verified', true)
+                .set('eventName', eventName)
+                .set('verifiedAt', DateTime.now()));
+      } else {
+        // No document exists—insert a new one.
+        await collection.insert({
+          'registrationNo': registrationNo,
+          'eventName': eventName,
+          'verified': true,
+          'verifiedAt': DateTime.now(),
+        });
+      }
+      final record = AttendanceRecord(
+        registrationNo: registrationNo,
+        timestamp: DateTime.now(),
+        success: true,
+        eventName: eventName,
       );
+      await _localStorageService.saveAttendanceRecord(record);
+      return true;
     } catch (e) {
-      debugPrint('Error marking student present on server: $e');
+      debugPrint('Error marking student present: $e');
+      return false;
     }
+  }
 
-    final record = AttendanceRecord(
-      registrationNo: registrationNo,
-      timestamp: DateTime.now(),
-      success: true,
-      eventName: eventName,
-    );
-    await _localStorageService.saveAttendanceRecord(record);
-    return true;
+  Future<bool> isStudentPresentForEvent(
+      String registrationNo, String eventName) async {
+    await initialize();
+    try {
+      final collection = _db!.collection(_currentCollection!);
+      final student =
+          await collection.findOne(where.eq('registrationNo', registrationNo));
+      return (student?['verified'] as bool?) ?? false;
+    } catch (e) {
+      debugPrint('Error checking student presence: $e');
+      return false;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getAttendanceHistory(

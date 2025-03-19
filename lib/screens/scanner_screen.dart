@@ -1,7 +1,11 @@
 import 'dart:async';
-
+import 'dart:convert';
+import 'package:flutter/foundation.dart'; // Required for compute()
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:crypto/crypto.dart';
+import 'package:tuple/tuple.dart';
 
 class QrScannerScreen extends StatefulWidget {
   const QrScannerScreen({super.key});
@@ -30,12 +34,12 @@ class _QrScannerScreenState extends State<QrScannerScreen>
   }
 
   void _subscribeBarcode() {
-    _subscription = controller.barcodes.listen((barcodeCapture) {
+    _subscription = controller.barcodes.listen((barcodeCapture) async {
       if (!_barcodeDetected && barcodeCapture.barcodes.isNotEmpty) {
         final code = barcodeCapture.barcodes.first.rawValue;
         if (code != null && code.isNotEmpty) {
           _barcodeDetected = true;
-          _processScannedCode(code);
+          await _processScannedCode(code);
         }
       }
     });
@@ -46,15 +50,95 @@ class _QrScannerScreenState extends State<QrScannerScreen>
     _subscription = null;
   }
 
-  
-  void _processScannedCode(String code) {
-    final parts = code.split('_');
-    if (parts.length != 2) {
+  // Updated method to decrypt QR code asynchronously using compute()
+  Future<void> _processScannedCode(String encryptedCode) async {
+    debugPrint(encryptedCode);
+    try {
+      const defaultKey = 'your-secret-key';
+
+      // Offload decryption using a background isolate
+      final decryptedCode = await compute(_decryptUsingLogic, {
+        'data': encryptedCode,
+        'key': defaultKey,
+      });
+      debugPrint('Decrypted code: $decryptedCode');
+
+      // Use underscore as delimiter per your format "23BCE11649_IPLAUDICTION"
+      final parts = decryptedCode.split('_');
+      if (parts.length != 2) {
+        _showInvalidQRCodeDialog();
+        return;
+      }
+
+      Navigator.pop(context, {
+        'encrypted': encryptedCode,
+        'decrypted': decryptedCode,
+        'registrationNo': parts[0],
+        'eventName': parts[1],
+      });
+    } catch (e) {
+      debugPrint('Decryption error: $e');
       _showInvalidQRCodeDialog();
-      return;
     }
-   
-    Navigator.pop(context, code);
+  }
+
+  // Updated decryption logic using AES CBC mode with key/IV derivation.
+  static String _decryptUsingLogic(Map<String, dynamic> args) {
+    final data = args['data'] as String;
+    final passphrase = args['key'] as String;
+    try {
+      // Decode data from Base64
+      Uint8List encryptedBytesWithSalt = base64.decode(data);
+      // "Salted__" is the first 8 bytes; next 8 bytes is salt.
+      Uint8List salt = encryptedBytesWithSalt.sublist(8, 16);
+      // The actual encrypted bytes start at index 16.
+      Uint8List encryptedBytes =
+          encryptedBytesWithSalt.sublist(16, encryptedBytesWithSalt.length);
+      // Derive key and IV using the provided passphrase and salt.
+      Tuple2<Uint8List, Uint8List> keyAndIV = _deriveKeyAndIV(passphrase, salt);
+      final key = encrypt.Key(keyAndIV.item1);
+      final iv = encrypt.IV(keyAndIV.item2);
+
+      final encrypter = encrypt.Encrypter(
+          encrypt.AES(key, mode: encrypt.AESMode.cbc, padding: "PKCS7"));
+
+      // Since decrypt64 expects Base64, re-encode the encrypted payload.
+      final decrypted =
+          encrypter.decrypt64(base64.encode(encryptedBytes), iv: iv);
+      if (decrypted.isEmpty) throw Exception('Invalid key or data');
+      return decrypted;
+    } catch (e) {
+      return 'Decryption failed: Invalid key or data';
+    }
+  }
+
+  static Tuple2<Uint8List, Uint8List> _deriveKeyAndIV(
+      String passphrase, Uint8List salt) {
+    // Convert passphrase into a Uint8List.
+    final password = _createUint8ListFromString(passphrase);
+    Uint8List concatenatedHashes = Uint8List(0);
+    Uint8List currentHash = Uint8List(0);
+    bool enoughBytes = false;
+    Uint8List preHash;
+    while (!enoughBytes) {
+      if (currentHash.isNotEmpty) {
+        preHash = Uint8List.fromList(currentHash + password + salt);
+      } else {
+        preHash = Uint8List.fromList(password + salt);
+      }
+      currentHash = Uint8List.fromList(md5.convert(preHash).bytes);
+      concatenatedHashes = Uint8List.fromList(concatenatedHashes + currentHash);
+      if (concatenatedHashes.length >= 48) {
+        enoughBytes = true;
+      }
+    }
+    final keyBytes = concatenatedHashes.sublist(0, 32);
+    final ivBytes = concatenatedHashes.sublist(32, 48);
+    return Tuple2(keyBytes, ivBytes);
+  }
+
+  static Uint8List _createUint8ListFromString(String s) {
+    return Uint8List.fromList(s.codeUnits);
   }
 
   void _showInvalidQRCodeDialog() {
@@ -167,15 +251,10 @@ class _QrScannerScreenState extends State<QrScannerScreen>
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // Scanner
           MobileScanner(controller: controller),
-
-          // Dark overlay
           Container(
             color: Colors.black.withOpacity(0.5),
           ),
-
-          // Cut-out for QR scanner
           Center(
             child: Container(
               height: 250,
@@ -187,21 +266,16 @@ class _QrScannerScreenState extends State<QrScannerScreen>
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(13),
-                child: Container(
-                  color: Colors.transparent,
-                ),
+                child: Container(color: Colors.transparent),
               ),
             ),
           ),
-
-          // Corner indicators
           Center(
             child: SizedBox(
               height: 250,
               width: 250,
               child: Stack(
                 children: [
-                  // Top left corner
                   Positioned(
                     top: 0,
                     left: 0,
@@ -216,7 +290,6 @@ class _QrScannerScreenState extends State<QrScannerScreen>
                       ),
                     ),
                   ),
-                  // Top right corner
                   Positioned(
                     top: 0,
                     right: 0,
@@ -231,7 +304,6 @@ class _QrScannerScreenState extends State<QrScannerScreen>
                       ),
                     ),
                   ),
-                  // Bottom left corner
                   Positioned(
                     bottom: 0,
                     left: 0,
@@ -247,7 +319,6 @@ class _QrScannerScreenState extends State<QrScannerScreen>
                       ),
                     ),
                   ),
-                  // Bottom right corner
                   Positioned(
                     bottom: 0,
                     right: 0,
@@ -267,8 +338,6 @@ class _QrScannerScreenState extends State<QrScannerScreen>
               ),
             ),
           ),
-
-          // Bottom info panel with icon
         ],
       ),
     );
