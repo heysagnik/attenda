@@ -5,8 +5,7 @@ import 'package:attendance/screens/home_screen.dart';
 class WelcomeScreen extends StatefulWidget {
   final MongoDBService mongoDBService;
 
-  const WelcomeScreen({Key? key, required this.mongoDBService})
-      : super(key: key);
+  const WelcomeScreen({super.key, required this.mongoDBService});
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
@@ -390,6 +389,7 @@ class _CollectionSelector extends StatelessWidget {
             border: Border.all(color: Colors.grey.shade300),
             boxShadow: [
               BoxShadow(
+                // ignore: deprecated_member_use
                 color: Colors.black.withOpacity(0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),

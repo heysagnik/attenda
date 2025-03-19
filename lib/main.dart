@@ -1,7 +1,5 @@
+import 'package:attendance/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:attendance/screens/welcome_screen.dart';
-import 'package:attendance/services/mongodb_service.dart';
-import 'package:attendance/config/app_config.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,12 +11,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mongoDBService = MongoDBService(
-      mongoUrl: AppConfig.mongoUrl,
-      username: AppConfig.mongoUsername,
-      password: AppConfig.mongoPassword,
-    );
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Attenda',
@@ -26,7 +18,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightGreen),
         useMaterial3: true,
       ),
-      home: WelcomeScreen(mongoDBService: mongoDBService),
+      home: const SplashScreen(),
     );
   }
 }
